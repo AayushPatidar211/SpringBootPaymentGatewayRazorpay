@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment</title>
+    <!-- Razorpay Checkout Script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 50px;
+            text-align: center;
+        }
+
+        .payment-box {
+            border: 1px solid #ccc;
+            padding: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 2px 2px 12px #aaa;
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #3399cc;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #287a99;
+        }
+    </style>
+</head>
+<body>
+
+<div class="payment-box">
+    <h2>Complete Your Payment</h2>
+    <input type="number" id="amount" placeholder="Enter Amount (in INR)" required>
+    <br>
+    <button id="pay-btn">Pay with Razorpay</button>
+</div>
+
+<script>
+    document.getElementById('pay-btn').onclick = async function (e) {
+        e.preventDefault();
+
+        const amountInput = document.getElementById('amount').value;
+
+        if (!amountInput || amountInput <= 0) {
+            alert("Please enter a valid amount");
+            return;
+        }
+
+        try {
+            // 1. Aapke Spring Boot backend API ko call karke Order ID create karna
+            // Note: Change localhost:8080 to your actual backend URL if different
+            // Pura URL likhne ki jagah (http://localhost:8080/api/...)
+// Sirf relative path likhein:
+
+            const response = await fetch(`/api/payments/create-order?amount=${amountInput}&currency=INR`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error("Failed to create order in backend");
+            }
+
+            // Backend return kar raha hai order.toString() jo ki JSON format me hota hai
+            const orderData = await response.json();
+
+            // 2. Razorpay Checkout options set karna
+            var options = {
+                "key": "rzp_test_TiXu64trxdGxHs", // IMPORTANT: Yahan apni public Razorpay API Key daalein
+                "amount": orderData.amount,    // Backend se aa raha hai (already multiplied by 100)
+                "currency": orderData.currency,
+                "name": "My Business Name",
+                "description": "Test Transaction",
+                "order_id": orderData.id,      // Backend se generate hua Order ID
+                "handler": function (response) {
+                    // 3. Payment Success hone ke baad ka action
+                    alert("Payment Successful!\nPayment ID: " + response.razorpay_payment_id);
+                    console.log("Success Response: ", response);
+
+                    // Yahan aap ek aur backend API call kar sakte hain
+                    // payment signature verify karne ke liye (Best Practice)
+                },
+                "prefill": {
+                    "name": "Gaurav Kumar",
+                    "email": "gaurav.kumar@example.com",
+                    "contact": "9000090000"
+                },
+                "theme": {
+                    "color": "#3399cc"
+                }
+            };
+
+            // Razorpay modal open karna
+            var rzp1 = new Razorpay(options);
+
+            rzp1.on('payment.failed', function (response) {
+                alert("Payment Failed: " + response.error.description);
+            });
+
+            rzp1.open();
+
+        } catch (error) {
+            console.error("Error details:", error);
+            alert("Something went wrong. Check console for details.");
+        }
+    }
+</script>
+</body>
+</html>
